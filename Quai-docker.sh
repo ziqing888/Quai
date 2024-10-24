@@ -9,7 +9,8 @@ BOLD="\033[1m"
 RESET="\033[0m"
 
 # 日志文件路径
-LOG_FILE="/var/log/quai_script.log"
+LOG_FILE="$HOME/quai_script.log"
+
 
 # 日志记录函数
 write_log() {
