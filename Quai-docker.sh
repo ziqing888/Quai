@@ -109,11 +109,14 @@ install_dependencies() {
         fi
         brew install git wget curl screen
     elif [[ "$OS" == "Windows" ]]; then
-        if ! command -v choco &> /dev/null; then
-            echo "请先安装 Chocolatey 包管理器。"
+        if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
+            log_info "检测到 WSL 环境，使用 apt 包管理器..."
+            sudo apt update
+            sudo apt install -y git wget curl screen
+        else
+            log_error "无法识别为 WSL 环境，请确认环境配置。"
             exit 1
         fi
-        choco install git wget curl screen
     fi
     log_success "系统依赖安装成功。"
     pause "按任意键返回主菜单..."
@@ -152,14 +155,12 @@ add_snapshots() {
     
     sudo apt install unzip -y
     
-    # 检查目录是否存在
     if [ -d "$HOME/go-quai/.config/store" ]; then
         rm -r "$HOME/go-quai/.config/store"
     else
         log_info "路径 $HOME/go-quai/.config/store 不存在，跳过删除步骤。"
     fi
     
-    # 下载并解压快照
     wget -qO- https://snapshots.cherryservers.com/quilibrium/store.zip > /tmp/store.zip
     unzip -j -o /tmp/store.zip -d "$HOME/go-quai/.config/store"
     rm /tmp/store.zip
@@ -218,17 +219,3 @@ pause() {
 # 检查并安装 Go
 check_go() {
     if ! command -v go &> /dev/null || ! go version | grep -q "go1.23"; then
-        log_info "Go 未安装，正在安装 Go 1.23..."
-        if [[ "$OS" == "macOS" ]]; then
-            brew install go
-        elif [[ "$OS" == "Windows" ]]; then
-            choco install golang
-        fi
-    else
-        log_info "Go 已安装，版本如下："
-        go version
-    fi
-}
-
-# 选择操作系统并启动主菜单
-choose_os
