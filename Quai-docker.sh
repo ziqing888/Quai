@@ -75,11 +75,12 @@ main_menu() {
         echo "请选择要执行的操作:"
         echo "1) 安装系统依赖"
         echo "2) 部署 Quai 节点"
-        echo "3) 查看 Quai 节点日志"
-        echo "4) 部署 Stratum Proxy"
-        echo "5) 启动矿工"
-        echo "6) 查看挖矿日志"
-        echo "7) 退出"
+        echo "3) 加载快照"
+        echo "4) 查看 Quai 节点日志"
+        echo "5) 部署 Stratum Proxy"
+        echo "6) 启动矿工"
+        echo "7) 查看挖矿日志"
+        echo "8) 退出"
         echo "=============================================="
 
         read -p "请输入选项: " choice
@@ -87,28 +88,27 @@ main_menu() {
         case $choice in
             1) install_dependencies ;;
             2) deploy_node ;;
-            3) view_logs ;;
-            4) deploy_stratum_proxy ;;
-            5) start_miner ;;
-            6) view_mining_logs ;;
-            7) echo "退出脚本..." && exit 0 ;;
+            3) add_snapshots ;;
+            4) view_logs ;;
+            5) deploy_stratum_proxy ;;
+            6) start_miner ;;
+            7) view_mining_logs ;;
+            8) echo "退出脚本..." && exit 0 ;;
             *) echo "无效选项，请重试。" ;;
         esac
     done
 }
 
-# 安装系统依赖的函数
+# 安装系统依赖
 install_dependencies() {
     log_info "安装系统依赖..."
     if [[ "$OS" == "macOS" ]]; then
-        # macOS 依赖安装
         if ! command -v brew &> /dev/null; then
             echo "安装 Homebrew..."
             /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
         fi
         brew install git wget curl screen
     elif [[ "$OS" == "Windows" ]]; then
-        # 检查是否为 WSL 环境
         if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
             log_info "检测到 WSL 环境，使用 apt 包管理器..."
             sudo apt update
@@ -125,34 +125,23 @@ install_dependencies() {
     pause "按任意键返回主菜单..."
 }
 
-# 部署节点的函数
+# 部署 Quai 节点
 deploy_node() {
     log_info "部署 Quai 节点..."
-
-    # 安装 Go
     check_go
 
-    # 创建目录并切换到该目录
     mkdir -p /data/ && cd /data/
 
-    # 克隆 Git 仓库
     log_info "克隆 Quai 节点仓库..."
     git clone https://github.com/dominant-strategies/go-quai
 
-    # 切换到 Quai 目录
     cd go-quai
-
-    # 切换到指定版本
     git checkout v0.38.0
-
-    # 构建项目
     make go-quai
 
-    # 输入地址信息
     read -p '请输入 Quai 地址: ' quai_address
     read -p '请输入 Qi 地址: ' qi_address
 
-    # 启动 Quai 节点
     screen -dmS node bash -c "./build/bin/go-quai start --node.slices '[0 0]' \
     --node.genesis-nonce 6224362036655375007 \
     --node.quai-coinbases '$quai_address' \
@@ -163,25 +152,30 @@ deploy_node() {
     pause "按任意键返回主菜单..."
 }
 
+# 加载快照
+add_snapshots() {
+    log_info "加载节点快照..."
+    apt install unzip -y
+    rm -r $HOME/go-quai/.config/store
+    wget -qO- https://snapshots.cherryservers.com/quilibrium/store.zip > /tmp/store.zip
+    unzip -j -o /tmp/store.zip -d $HOME/go-quai/.config/store
+    rm /tmp/store.zip
+
+    screen -dmS node bash -c './build/bin/go-quai start'
+    log_success "快照加载完成并已重新启动节点。"
+    pause "按任意键返回主菜单..."
+}
+
 # 部署 Stratum Proxy
 deploy_stratum_proxy() {
     log_info "部署 Stratum Proxy..."
     cd /data/
     git clone https://github.com/dominant-strategies/go-quai-stratum
     cd go-quai-stratum
-
-    # 切换到指定版本
     git checkout v0.16.0
-
-    # 复制配置文件
     cp config/config.example.json config/config.json
-
-    # 构建 Stratum Proxy
     make go-quai-stratum
-
-    # 在 screen 中运行 Stratum Proxy
     screen -dmS stratum bash -c "./build/bin/go-quai-stratum --region=cyprus --zone=cyprus1 --stratum=3333; exec bash"
-
     log_success "Stratum Proxy 已启动。"
     pause "按任意键返回主菜单..."
 }
@@ -190,23 +184,18 @@ deploy_stratum_proxy() {
 start_miner() {
     log_info "启动矿工..."
     read -p '请输入节点所在 IP 地址: ' node_ip
-
-    # 下载并部署矿工
-    log_info "下载并部署矿工..."
     wget https://raw.githubusercontent.com/dominant-strategies/quai-gpu-miner/refs/heads/main/deploy_miner.sh
     chmod +x deploy_miner.sh
     ./deploy_miner.sh
 
     wget -P /usr/local/bin/ https://github.com/dominant-strategies/quai-gpu-miner/releases/download/v0.2.0/quai-gpu-miner
     chmod +x /usr/local/bin/quai-gpu-miner
-
     screen -dmS miner bash -c "quai-gpu-miner -U -P stratum://$node_ip:3333 2>&1 | tee /var/log/miner.log"
-
     log_success "矿工已启动！使用 'screen -r miner' 查看日志。"
     pause "按任意键返回主菜单..."
 }
 
-# 查看日志
+# 查看节点日志
 view_logs() {
     log_info "正在查看节点日志..."
     tail -f /data/go-quai/nodelogs/global.log
@@ -230,7 +219,7 @@ check_go() {
         if [[ "$OS" == "macOS" ]]; then
             brew install go
         elif [[ "$OS" == "Windows" ]]; then
-            sudo apt install golang -y
+            choco install golang
         fi
     else
         log_info "Go 已安装，版本如下："
