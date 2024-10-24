@@ -219,3 +219,17 @@ pause() {
 # 检查并安装 Go
 check_go() {
     if ! command -v go &> /dev/null || ! go version | grep -q "go1.23"; then
+        log_info "Go 未安装，正在安装 Go 1.23..."
+        if [[ "$OS" == "macOS" ]]; then
+            brew install go
+        elif [[ "$OS" == "Windows" ]]; then
+            sudo apt install golang -y
+        fi
+    else
+        log_info "Go 已安装，版本如下："
+        go version
+    fi
+}
+
+# 选择操作系统并启动主菜单
+choose_os
