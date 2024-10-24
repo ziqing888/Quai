@@ -11,7 +11,6 @@ RESET="\033[0m"
 # 日志文件路径
 LOG_FILE="$HOME/quai_script.log"
 
-
 # 日志记录函数
 write_log() {
     local message="$1"
@@ -98,7 +97,7 @@ main_menu() {
     done
 }
 
-# 假设的依赖安装函数
+# 安装系统依赖的函数
 install_dependencies() {
     log_info "安装系统依赖..."
     if [[ "$OS" == "macOS" ]]; then
@@ -109,12 +108,18 @@ install_dependencies() {
         fi
         brew install git wget curl screen
     elif [[ "$OS" == "Windows" ]]; then
-        # Windows (WSL) 依赖安装
-        if ! command -v choco &> /dev/null; then
-            echo "请先安装 Chocolatey 包管理器。"
-            exit 1
+        # 检查是否为 WSL 环境
+        if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
+            log_info "检测到 WSL 环境，使用 apt 包管理器..."
+            sudo apt update
+            sudo apt install -y git wget curl screen
+        else
+            if ! command -v choco &> /dev/null; then
+                echo "请先安装 Chocolatey 包管理器。"
+                exit 1
+            fi
+            choco install git wget curl screen
         fi
-        choco install git wget curl screen
     fi
     log_success "系统依赖安装成功。"
     pause "按任意键返回主菜单..."
@@ -225,7 +230,7 @@ check_go() {
         if [[ "$OS" == "macOS" ]]; then
             brew install go
         elif [[ "$OS" == "Windows" ]]; then
-            choco install golang
+            sudo apt install golang -y
         fi
     else
         log_info "Go 已安装，版本如下："
@@ -235,3 +240,4 @@ check_go() {
 
 # 选择操作系统并启动主菜单
 choose_os
+
