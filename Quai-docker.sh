@@ -127,7 +127,8 @@ deploy_node() {
     log_info "部署 Quai 节点..."
     check_go
 
-    mkdir -p /data/ && cd /data/
+    # 使用用户目录下的数据路径
+    mkdir -p ~/data/ && cd ~/data/
 
     log_info "克隆 Quai 节点仓库..."
     git clone https://github.com/dominant-strategies/go-quai
@@ -155,13 +156,14 @@ add_snapshots() {
     
     sudo apt install unzip -y
     
-    if [ ! -d "/data/go-quai/.config/store" ]; then
-        mkdir -p "/data/go-quai/.config/store"
-        log_info "创建了存储目录: /data/go-quai/.config/store"
+    # 修改为 macOS 用户目录路径
+    if [ ! -d "$HOME/data/go-quai/.config/store" ]; then
+        mkdir -p "$HOME/data/go-quai/.config/store"
+        log_info "创建了存储目录: $HOME/data/go-quai/.config/store"
     fi
 
     wget -qO- https://snapshots.cherryservers.com/quilibrium/store.zip > /tmp/store.zip
-    unzip -j -o /tmp/store.zip -d "/data/go-quai/.config/store"
+    unzip -j -o /tmp/store.zip -d "$HOME/data/go-quai/.config/store"
     rm /tmp/store.zip
 
     screen -dmS node bash -c './build/bin/go-quai start'
@@ -172,7 +174,7 @@ add_snapshots() {
 # 部署 Stratum Proxy
 deploy_stratum_proxy() {
     log_info "部署 Stratum Proxy..."
-    cd /data/
+    cd ~/data/
     git clone https://github.com/dominant-strategies/go-quai-stratum
     cd go-quai-stratum
     git checkout v0.16.0
@@ -201,7 +203,7 @@ start_miner() {
 # 查看节点日志
 view_logs() {
     log_info "正在查看节点日志..."
-    tail -f /data/go-quai/nodelogs/global.log
+    tail -f ~/data/go-quai/nodelogs/global.log
 }
 
 # 查看挖矿日志
