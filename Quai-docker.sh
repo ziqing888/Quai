@@ -109,15 +109,11 @@ install_dependencies() {
         fi
         brew install git wget curl screen
     elif [[ "$OS" == "Windows" ]]; then
-        # 检查是否为 WSL 环境，直接使用 apt 进行安装
-        if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
-            log_info "检测到 WSL 环境，使用 apt 包管理器..."
-            sudo apt update
-            sudo apt install -y git wget curl screen
-        else
-            log_error "检测到非 WSL 环境，请安装 Chocolatey 包管理器。"
+        if ! command -v choco &> /dev/null; then
+            echo "请先安装 Chocolatey 包管理器。"
             exit 1
         fi
+        choco install git wget curl screen
     fi
     log_success "系统依赖安装成功。"
     pause "按任意键返回主菜单..."
@@ -153,10 +149,19 @@ deploy_node() {
 # 加载快照
 add_snapshots() {
     log_info "加载节点快照..."
+    
     sudo apt install unzip -y
-    rm -r $HOME/go-quai/.config/store
+    
+    # 检查目录是否存在
+    if [ -d "$HOME/go-quai/.config/store" ]; then
+        rm -r "$HOME/go-quai/.config/store"
+    else
+        log_info "路径 $HOME/go-quai/.config/store 不存在，跳过删除步骤。"
+    fi
+    
+    # 下载并解压快照
     wget -qO- https://snapshots.cherryservers.com/quilibrium/store.zip > /tmp/store.zip
-    unzip -j -o /tmp/store.zip -d $HOME/go-quai/.config/store
+    unzip -j -o /tmp/store.zip -d "$HOME/go-quai/.config/store"
     rm /tmp/store.zip
 
     screen -dmS node bash -c './build/bin/go-quai start'
@@ -217,7 +222,7 @@ check_go() {
         if [[ "$OS" == "macOS" ]]; then
             brew install go
         elif [[ "$OS" == "Windows" ]]; then
-            sudo apt install golang -y
+            choco install golang
         fi
     else
         log_info "Go 已安装，版本如下："
