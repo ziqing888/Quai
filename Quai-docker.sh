@@ -155,14 +155,13 @@ add_snapshots() {
     
     sudo apt install unzip -y
     
-    if [ -d "$HOME/go-quai/.config/store" ]; then
-        rm -r "$HOME/go-quai/.config/store"
-    else
-        log_info "路径 $HOME/go-quai/.config/store 不存在，跳过删除步骤。"
+    if [ ! -d "/data/go-quai/.config/store" ]; then
+        mkdir -p "/data/go-quai/.config/store"
+        log_info "创建了存储目录: /data/go-quai/.config/store"
     fi
-    
+
     wget -qO- https://snapshots.cherryservers.com/quilibrium/store.zip > /tmp/store.zip
-    unzip -j -o /tmp/store.zip -d "$HOME/go-quai/.config/store"
+    unzip -j -o /tmp/store.zip -d "/data/go-quai/.config/store"
     rm /tmp/store.zip
 
     screen -dmS node bash -c './build/bin/go-quai start'
